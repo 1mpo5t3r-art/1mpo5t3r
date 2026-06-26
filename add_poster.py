@@ -151,7 +151,7 @@ def main():
     category   = parts[0]
     raw_label  = parts[1]                              # lowercase from filename
     label      = (args.label if args.label else raw_label).upper()   # UPPERCASE in POSTERS
-    src        = "images/full/" + label_to_filename(label)           # images/full/newposter.jpg
+    src        = "images/full/" + category + "_" + label_to_filename(label)  # images/full/sport_newposter.jpg
     key        = f"{category}_{raw_label}"
 
     print(f"\n  Source:   {img_path.name}")
@@ -172,7 +172,7 @@ def main():
     # ── Copy full-res to images/full/<label>.jpg ──────────────────────────────
     full_dir  = Path(args.full_dir)
     full_dir.mkdir(parents=True, exist_ok=True)
-    dest_filename = label_to_filename(label)           # newposter.jpg
+    dest_filename = category + "_" + label_to_filename(label)  # sport_newposter.jpg
     dest      = full_dir / dest_filename
 
     if dest.exists():
