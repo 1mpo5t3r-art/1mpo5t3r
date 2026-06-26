@@ -7,21 +7,22 @@ Usage:
 
     python3 add_poster.py sport_newposter.jpg
     python3 add_poster.py lab_experiment.jpg --no-crop
-    python3 add_poster.py studio_client.jpg --label "Client Name"
+    python3 add_poster.py studio_client.jpg --label "CLIENT NAME"
 
 The script will:
-  1. Crop the baked-in white export strip (7px, skipped for exceptions)
-  2. Generate a base64 thumbnail (980x1232 → scaled for embed)
-  3. Copy the full-res image to images/full/
-  4. Inject the new poster HTML into the correct category carousel in index.html
-  5. Print a summary of what changed
+  1. Crop the baked-in white export strip (auto-detected, skipped for exceptions)
+  2. Copy the full-res image to images/full/<label>.jpg
+  3. Inject a new entry into the POSTERS JS object in index.html
+  4. Print a summary of what changed
 
-Naming convention: {category}_{label}.jpg
+Naming convention for input file: {category}_{label}.jpg
   Categories: sport, gaming, studio, lab
+  Label becomes uppercase in POSTERS, lowercase for the filename.
+  e.g.  sport_newposter.jpg  →  label "NEWPOSTER",  file  images/full/newposter.jpg
+  e.g.  lab_my work.jpg      →  label "MY WORK",    file  images/full/my_work.jpg
 """
 
 import argparse
-import base64
 import os
 import re
 import shutil
@@ -32,16 +33,14 @@ try:
     from PIL import Image
     import numpy as np
 except ImportError:
-    print("ERROR: Pillow required. Run: pip install Pillow numpy")
+    print("ERROR: Pillow + numpy required.  Run:  pip install Pillow numpy")
     sys.exit(1)
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-STRIP_PX = 7          # white export strip height to crop
-STRIP_THRESHOLD = 245 # brightness above which a row is considered white
-THUMB_QUALITY = 85    # JPEG quality for base64 thumbnail
+STRIP_THRESHOLD = 245   # brightness above which a row is considered white
 
-# Posters with genuinely light bottoms — skip auto-crop for these
+# Posters with genuinely light/white bottoms — skip auto-crop
 CROP_EXCEPTIONS = {"sport_garland", "sport_panthers"}
 
 VALID_CATEGORIES = {"sport", "gaming", "studio", "lab"}
@@ -49,7 +48,7 @@ VALID_CATEGORIES = {"sport", "gaming", "studio", "lab"}
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def detect_strip(img_path: str) -> int:
-    """Scan from the bottom up and return the number of near-white rows."""
+    """Scan from the bottom up; return the number of near-white rows to remove."""
     img = Image.open(img_path).convert("RGB")
     arr = np.array(img)
     strip = 0
@@ -62,94 +61,75 @@ def detect_strip(img_path: str) -> int:
     return strip
 
 
-def make_thumbnail_b64(img_path: str, crop_px: int) -> str:
-    """Open image, optionally crop bottom strip, return base64 JPEG string."""
-    img = Image.open(img_path).convert("RGB")
-    w, h = img.size
+def crop_and_save(src_path: str, dest_path: str, crop_px: int) -> None:
+    """Open image, crop bottom strip if needed, save to dest_path."""
+    img = Image.open(src_path).convert("RGB")
     if crop_px > 0:
+        w, h = img.size
         img = img.crop((0, 0, w, h - crop_px))
-    # Re-size to match what the site expects (980×1232 at 4:5, keep as-is)
-    # Encode to JPEG bytes then base64
-    from io import BytesIO
-    buf = BytesIO()
-    img.save(buf, format="JPEG", quality=THUMB_QUALITY, optimize=True)
-    return base64.b64encode(buf.getvalue()).decode("ascii")
+    img.save(dest_path, format="JPEG", quality=95, optimize=True)
 
 
-def infer_label(filename: str) -> str:
-    """Turn 'sport_newposter.jpg' → 'newposter'."""
-    stem = Path(filename).stem          # sport_newposter
-    parts = stem.split("_", 1)
-    return parts[1] if len(parts) == 2 else stem
+def label_to_filename(label: str) -> str:
+    """'MY POSTER' → 'my_poster.jpg'  (matches fullSrc() in index.html)"""
+    return label.lower().replace(" ", "_") + ".jpg"
 
 
-def build_slide_html(category: str, label: str, b64: str, index: int) -> str:
-    """Return the <div class="poster-slide"> HTML block for one poster."""
-    full_src = f"images/full/{category}_{label}.jpg"
-    data_index = index  # positional index within the category
-    return (
-        f'            <div class="poster-slide" '
-        f'data-full="{full_src}" '
-        f'data-category="{category}" '
-        f'data-index="{data_index}">\n'
-        f'              <img src="data:image/jpeg;base64,{b64}" '
-        f'alt="{label}" loading="lazy">\n'
-        f'            </div>'
-    )
-
-
-def inject_into_html(html_path: str, category: str, slide_html: str) -> tuple[str, int]:
+def inject_into_posters(html: str, category: str, label: str, src: str) -> str:
     """
-    Find the correct category carousel track in index.html and append
-    the new slide before its closing </div> (the track div).
-    Returns (updated_html_str, new_slide_index).
-    """
-    with open(html_path, "r", encoding="utf-8") as f:
-        html = f.read()
+    Find the correct category array inside the POSTERS JS object and
+    append {"src":"...","label":"..."} as the last entry.
 
-    # Find the carousel track for this category.
-    # Pattern: <div class="carousel-track" data-category="{category}">
-    track_pattern = re.compile(
-        r'(<div[^>]*class="carousel-track"[^>]*data-category="' + re.escape(category) + r'"[^>]*>)(.*?)(</div>)',
+    Handles the compact single-line format written by the previous refactor:
+        "sport":[{"src":"...","label":"..."},...]
+    """
+    # Match the full array for this category
+    # e.g.  "sport":[...]
+    pattern = re.compile(
+        r'("' + re.escape(category) + r'":\[)(.*?)(\])',
         re.DOTALL
     )
-
-    match = track_pattern.search(html)
+    match = pattern.search(html)
     if not match:
         raise ValueError(
-            f"Could not find carousel-track for category '{category}' in {html_path}.\n"
-            "Make sure the HTML uses: class=\"carousel-track\" data-category=\"{category}\""
+            f"Could not find POSTERS[\"{category}\"] in index.html.\n"
+            f"Expected a line like:  \"{category}\":[...]"
         )
 
-    # Count existing slides to determine index
-    existing_slides = re.findall(r'class="poster-slide"', match.group(2))
-    new_index = len(existing_slides)
+    opening = match.group(1)   # "sport":[
+    inner   = match.group(2)   # existing entries
+    closing = match.group(3)   # ]
 
-    # Build updated slide HTML with correct index
-    slide_with_index = re.sub(r'data-index="\d+"', f'data-index="{new_index}"', slide_html)
+    new_entry = f'{{"src":"{src}","label":"{label}"}}'
 
-    # Inject before the closing </div> of the track
-    updated_inner = match.group(2) + "\n" + slide_with_index + "\n          "
-    updated_html = html[:match.start()] + match.group(1) + updated_inner + match.group(3) + html[match.end():]
+    # Append after the last existing entry (add comma separator)
+    updated_inner = inner.rstrip() + "," + new_entry
 
-    return updated_html, new_index
+    updated_html = html[:match.start()] + opening + updated_inner + closing + html[match.end():]
+    return updated_html
+
+
+def count_existing(html: str, category: str) -> int:
+    """Return how many posters are already in the given category."""
+    pattern = re.compile(
+        r'"' + re.escape(category) + r'":\[(.*?)\]',
+        re.DOTALL
+    )
+    match = pattern.search(html)
+    if not match:
+        return 0
+    return match.group(1).count('"label":')
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
     parser = argparse.ArgumentParser(description="Add a poster to 1mpo5t3r.com")
-    parser.add_argument("image", help="Path to the source JPG (e.g. sport_newposter.jpg)")
-    parser.add_argument("--label", help="Override label (default: inferred from filename)")
-    parser.add_argument("--no-crop", action="store_true", help="Skip white strip crop")
-    parser.add_argument(
-        "--html", default="index.html",
-        help="Path to index.html (default: ./index.html)"
-    )
-    parser.add_argument(
-        "--full-dir", default="images/full",
-        help="Directory to copy full-res image into (default: ./images/full)"
-    )
+    parser.add_argument("image",   help="Path to the source JPG  (e.g. sport_newposter.jpg)")
+    parser.add_argument("--label", help="Override label — use UPPERCASE  (default: inferred from filename)")
+    parser.add_argument("--no-crop", action="store_true", help="Skip white-strip crop")
+    parser.add_argument("--html",     default="index.html",   help="Path to index.html  (default: ./index.html)")
+    parser.add_argument("--full-dir", default="images/full",  help="Full-res output dir  (default: ./images/full)")
     args = parser.parse_args()
 
     img_path = Path(args.image).resolve()
@@ -157,8 +137,8 @@ def main():
         print(f"ERROR: File not found: {img_path}")
         sys.exit(1)
 
-    # ── Infer category and label ──────────────────────────────────────────────
-    stem = img_path.stem  # e.g. sport_newposter
+    # ── Infer category and label from filename ────────────────────────────────
+    stem  = img_path.stem                  # e.g. "sport_newposter"
     parts = stem.split("_", 1)
     if len(parts) != 2 or parts[0] not in VALID_CATEGORIES:
         print(
@@ -168,53 +148,67 @@ def main():
         )
         sys.exit(1)
 
-    category = parts[0]
-    label = args.label if args.label else parts[1]
-    key = f"{category}_{label}"
+    category   = parts[0]
+    raw_label  = parts[1]                              # lowercase from filename
+    label      = (args.label if args.label else raw_label).upper()   # UPPERCASE in POSTERS
+    src        = "images/full/" + label_to_filename(label)           # images/full/newposter.jpg
+    key        = f"{category}_{raw_label}"
 
-    print(f"\n  Poster:   {img_path.name}")
+    print(f"\n  Source:   {img_path.name}")
     print(f"  Category: {category}")
     print(f"  Label:    {label}")
+    print(f"  File:     {src}")
 
     # ── Crop decision ─────────────────────────────────────────────────────────
     if args.no_crop or key in CROP_EXCEPTIONS:
         crop_px = 0
-        reason = "skipped (exception)" if key in CROP_EXCEPTIONS else "skipped (--no-crop)"
+        reason  = "skipped (--no-crop)" if args.no_crop else "skipped (exception list)"
     else:
         crop_px = detect_strip(str(img_path))
-        reason = f"{crop_px}px detected and removed" if crop_px else "none detected"
+        reason  = f"{crop_px}px detected and removed" if crop_px else "none detected"
 
     print(f"  Crop:     {reason}")
 
-    # ── Thumbnail ─────────────────────────────────────────────────────────────
-    print("  Encoding thumbnail...", end=" ", flush=True)
-    b64 = make_thumbnail_b64(str(img_path), crop_px)
-    print(f"done ({len(b64) // 1024}KB)")
-
-    # ── Copy full-res ─────────────────────────────────────────────────────────
-    full_dir = Path(args.full_dir)
+    # ── Copy full-res to images/full/<label>.jpg ──────────────────────────────
+    full_dir  = Path(args.full_dir)
     full_dir.mkdir(parents=True, exist_ok=True)
-    dest = full_dir / f"{category}_{label}.jpg"
-    shutil.copy2(str(img_path), str(dest))
-    print(f"  Full-res: copied to {dest}")
+    dest_filename = label_to_filename(label)           # newposter.jpg
+    dest      = full_dir / dest_filename
 
-    # ── Build slide HTML ──────────────────────────────────────────────────────
-    slide_html = build_slide_html(category, label, b64, index=0)  # index updated in inject step
+    if dest.exists():
+        print(f"\n  WARNING: {dest} already exists — overwriting.")
 
-    # ── Inject into index.html ────────────────────────────────────────────────
+    crop_and_save(str(img_path), str(dest), crop_px)
+    print(f"  Copied:   {dest}  ({dest.stat().st_size // 1024}KB)")
+
+    # ── Inject into POSTERS in index.html ─────────────────────────────────────
     html_path = Path(args.html)
     if not html_path.exists():
-        print(f"\nWARNING: {html_path} not found. Printing slide HTML instead:\n")
-        print(slide_html)
+        print(
+            f"\n  WARNING: {html_path} not found.\n"
+            f"  Add this entry manually to POSTERS[\"{category}\"] in index.html:\n"
+            f'    {{"src":"{src}","label":"{label}"}}'
+        )
         sys.exit(0)
 
-    updated_html, slide_index = inject_into_html(str(html_path), category, slide_html)
+    with open(str(html_path), "r", encoding="utf-8") as f:
+        html = f.read()
+
+    before_count = count_existing(html, category)
+    updated_html = inject_into_posters(html, category, label, src)
+    after_count  = count_existing(updated_html, category)
+
+    if after_count != before_count + 1:
+        print(f"\n  ERROR: Injection check failed (before={before_count}, after={after_count}). Aborting.")
+        sys.exit(1)
 
     with open(str(html_path), "w", encoding="utf-8") as f:
         f.write(updated_html)
 
-    print(f"  HTML:     injected as slide #{slide_index} in [{category}] carousel")
-    print(f"\n  Done. Commit index.html + images/full/{category}_{label}.jpg to GitHub.\n")
+    print(f"  HTML:     injected as poster #{after_count} in POSTERS[\"{category}\"]")
+    print(f"\n  Done. Commit these two files to GitHub:")
+    print(f"    index.html")
+    print(f"    images/full/{dest_filename}\n")
 
 
 if __name__ == "__main__":
