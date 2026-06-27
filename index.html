@@ -53,7 +53,7 @@ img{display:block;width:100%;height:100%;object-fit:cover}
 .reg::after{top:50%;left:0;height:1px;width:100%;transform:translateY(-50%)}
 .reg.tl{top:14px;left:14px}.reg.tr{top:14px;right:14px}
 .reg.bl{bottom:14px;left:14px}.reg.br{bottom:14px;right:14px}
-@media(max-width:720px){.reg{display:none}}
+@media(max-width:720px){.reg{display:block;width:9px;height:9px;opacity:.4}.reg.tl{top:9px;left:9px}.reg.tr{top:9px;right:9px}.reg.bl{bottom:9px;left:9px}.reg.br{bottom:9px;right:9px}}
 
 /* ---------- nav ---------- */
 nav{position:fixed;top:0;left:0;width:100%;z-index:100;display:flex;align-items:center;justify-content:space-between;
@@ -95,7 +95,8 @@ nav{position:fixed;top:0;left:0;width:100%;z-index:100;display:flex;align-items:
   color:transparent;-webkit-text-stroke:2px var(--acid);text-stroke:2px var(--acid);opacity:.2;}
 .hero-copy{position:relative;z-index:4;text-align:center;pointer-events:none;padding:0 18px;text-transform:uppercase}
 .eyebrow{font-family:var(--mono);font-size:clamp(9px,1.05vw,11.5px);letter-spacing:.06em;color:var(--acid);margin-bottom:22px;white-space:nowrap;text-shadow:0 0 16px rgba(10,10,11,.92)}
-.hero-title{font-family:var(--disp);font-weight:400;font-size:clamp(64px,16vw,250px);letter-spacing:.04em;line-height:.84;text-shadow:0 4px 60px rgba(0,0,0,.6);display:inline-block}
+.hero-title{font-family:var(--disp);font-weight:400;font-size:clamp(64px,16vw,250px);letter-spacing:-.01em;line-height:.84;text-shadow:0 4px 60px rgba(0,0,0,.6);display:inline-block}
+.hero-title .t1{margin-right:-.05em}   /* close the 1→M gap to match the rest of the word */
 .hero-sub{font-family:var(--body);margin-top:6px;margin-inline:auto;text-transform:none;text-shadow:0 2px 26px rgba(10,10,11,.88)}
 .hero-sub .lead{display:block;font-family:'Newsreader',serif;font-weight:500;font-style:italic;font-size:clamp(16px,1.85vw,23px);color:var(--ink);opacity:.97;line-height:1.35;text-align:center}
 .hero-sub .desc{display:block;margin-top:14px;font-weight:600;font-size:clamp(12px,1.25vw,14.5px);color:rgba(236,230,212,.85);line-height:1.6;text-align:justify;text-align-last:justify}
@@ -114,6 +115,7 @@ nav{position:fixed;top:0;left:0;width:100%;z-index:100;display:flex;align-items:
 
 /* ---------- generic section frame ---------- */
 section{position:relative;padding:clamp(70px,11vh,140px) clamp(20px,5vw,80px);scroll-margin-top:60px}
+@media(max-width:720px){section{padding-top:clamp(34px,5vh,52px);padding-bottom:clamp(34px,5vh,52px)}.kicker{margin-bottom:20px}.hr{margin-bottom:20px}.cat-head{margin-bottom:18px}}
 .kicker{display:flex;align-items:baseline;gap:16px;font-family:var(--mono);font-size:11px;letter-spacing:.18em;color:var(--muted);margin-bottom:34px;flex-wrap:wrap}
 .kicker .idx{color:var(--acid)}
 .kicker .jp{margin-left:auto}
@@ -211,8 +213,8 @@ footer{padding:clamp(60px,10vh,120px) clamp(20px,5vw,80px) 40px;border-top:1px s
   <div class="hero-veil"></div>
   <div class="hero-ghost" aria-hidden="true">1MPO5T3R</div>
   <div class="hero-copy">
-    <div class="eyebrow">Work By Andrew Golebiewski &nbsp;·&nbsp; Est. 1998</div>
-    <h1 class="hero-title">1MPO5T3R</h1>
+    <div class="eyebrow">Work By Andrew Golebiewski</div>
+    <h1 class="hero-title"><span class="t1">1</span>MPO5T3R</h1>
     <p class="hero-sub"><span class="lead">Bold work made to land.</span></p>
   </div>
   <div class="hero-meta l"><span id="coCoord">33° 54′ S&nbsp;&nbsp;&nbsp;151° 08′ E</span><br><span class="place" id="coPlace">SYDNEY</span></div>
@@ -294,13 +296,9 @@ footer{padding:clamp(60px,10vh,120px) clamp(20px,5vw,80px) 40px;border-top:1px s
   </div>
 </div>
 
+<script src="posters.js"></script>
 <script>
-const POSTERS = {
-"sport":[{"src":"images/full/sport_banchero.jpg","label":"BANCHERO"},{"src":"images/full/sport_brown.jpg","label":"BROWN"},{"src":"images/full/sport_brunson.jpg","label":"BRUNSON"},{"src":"images/full/sport_butler.jpg","label":"BUTLER"},{"src":"images/full/sport_carter.jpg","label":"CARTER"},{"src":"images/full/sport_castle.jpg","label":"CASTLE"},{"src":"images/full/sport_irankunda.jpg","label":"IRANKUNDA"},{"src":"images/full/sport_curry.jpg","label":"CURRY"},{"src":"images/full/sport_edwards_1.jpg","label":"EDWARDS 1"},{"src":"images/full/sport_edwards_2.jpg","label":"EDWARDS 2"},{"src":"images/full/sport_fernandes.jpg","label":"FERNANDES"},{"src":"images/full/sport_garland.jpg","label":"GARLAND"},{"src":"images/full/sport_gilgeous.jpg","label":"GILGEOUS"},{"src":"images/full/sport_mitchell.jpg","label":"MITCHELL"},{"src":"images/full/sport_ojeda.jpg","label":"OJEDA"},{"src":"images/full/sport_panthers.jpg","label":"PANTHERS"},{"src":"images/full/sport_sharpe.jpg","label":"SHARPE"},{"src":"images/full/sport_too.jpg","label":"TOO"}],
-"gaming":[{"src":"images/full/gaming_battlefield.jpg","label":"BATTLEFIELD"},{"src":"images/full/gaming_clairobscur.jpg","label":"CLAIROBSCUR"},{"src":"images/full/gaming_control.jpg","label":"CONTROL"},{"src":"images/full/gaming_cyberpunk.jpg","label":"CYBERPUNK"},{"src":"images/full/gaming_deathstranding.jpg","label":"DEATHSTRANDING"},{"src":"images/full/gaming_deathstranding2.jpg","label":"DEATHSTRANDING2"},{"src":"images/full/gaming_devilmaycry.jpg","label":"DEVILMAYCRY"},{"src":"images/full/gaming_eldenring.jpg","label":"ELDENRING"},{"src":"images/full/gaming_ghostoftsushima.jpg","label":"GHOSTOFTSUSHIMA"},{"src":"images/full/gaming_granturismo.jpg","label":"GRANTURISMO"},{"src":"images/full/gaming_liesofp.jpg","label":"LIESOFP"},{"src":"images/full/gaming_madrock.jpg","label":"MADROCK"},{"src":"images/full/gaming_mirrorsedge.jpg","label":"MIRRORSEDGE"},{"src":"images/full/gaming_nier.jpg","label":"NIER"},{"src":"images/full/gaming_persona.jpg","label":"PERSONA"},{"src":"images/full/gaming_readyornot.jpg","label":"READYORNOT"},{"src":"images/full/gaming_sekiro.jpg","label":"SEKIRO"},{"src":"images/full/gaming_soma.jpg","label":"SOMA"}],
-"studio":[{"src":"images/full/studio_88rising.jpg","label":"88RISING"},{"src":"images/full/studio_aespa.jpg","label":"AESPA"},{"src":"images/full/studio_dpr.jpg","label":"DPR"},{"src":"images/full/studio_emini.jpg","label":"EMINI"},{"src":"images/full/studio_fike.jpg","label":"FIKE"},{"src":"images/full/studio_gentlemonster.jpg","label":"GENTLEMONSTER"},{"src":"images/full/studio_ghibli.jpg","label":"GHIBLI"},{"src":"images/full/studio_jaemin.jpg","label":"JAEMIN"},{"src":"images/full/studio_kai.jpg","label":"KAI"},{"src":"images/full/studio_keshi.jpg","label":"KESHI"},{"src":"images/full/studio_lesserafim.jpg","label":"LESSERAFIM"},{"src":"images/full/studio_r34.jpg","label":"R34"},{"src":"images/full/studio_redvelvet.jpg","label":"REDVELVET"},{"src":"images/full/studio_so1.jpg","label":"SO1"},{"src":"images/full/studio_suicoke.jpg","label":"SUICOKE"},{"src":"images/full/studio_taeyeon.jpg","label":"TAEYEON"},{"src":"images/full/studio_txt.jpg","label":"TXT"},{"src":"images/full/studio_w124.jpg","label":"W124"}],
-"lab":[{"src":"images/full/lab_brockmann.jpg","label":"BROCKMANN"},{"src":"images/full/lab_duevite.jpg","label":"DUEVITE"},{"src":"images/full/lab_escapism.jpg","label":"ESCAPISM"},{"src":"images/full/lab_frustration.jpg","label":"FRUSTRATION"},{"src":"images/full/lab_gardenofwords.jpg","label":"GARDENOFWORDS"},{"src":"images/full/lab_given.jpg","label":"GIVEN"},{"src":"images/full/lab_greens.jpg","label":"GREENS"},{"src":"images/full/lab_hattori.jpg","label":"HATTORI"},{"src":"images/full/lab_lifeclassics.jpg","label":"LIFECLASSICS"},{"src":"images/full/lab_lifeshort.jpg","label":"LIFESHORT"},{"src":"images/full/lab_magnolia.jpg","label":"MAGNOLIA"},{"src":"images/full/lab_mtwolf.jpg","label":"MTWOLF"},{"src":"images/full/lab_natgeo.jpg","label":"NATGEO"},{"src":"images/full/lab_omyt.jpg","label":"OMYT"},{"src":"images/full/lab_paulwetz.jpg","label":"PAULWETZ"},{"src":"images/full/lab_slice.jpg","label":"SLICE"},{"src":"images/full/lab_sonlux.jpg","label":"SONLUX"},{"src":"images/full/lab_wordplay.jpg","label":"WORDPLAY"}]
-};
+const POSTERS = window.POSTERS || {};
 
 /* ---------- custom cursor ---------- */
 (function(){
