@@ -2,5 +2,4 @@
 .gitignore
 .DS_Store
 node_modules
-add_poster.py
-
+build-manifest.js
